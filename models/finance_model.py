@@ -59,6 +59,29 @@ def delete_finance(finance_id, club_id, transaction_type, amount):
     db.commit()
 
 
+def update_finance(finance_id, club_id, new_date, new_type, new_amount, new_description, old_type, old_amount):
+    """Update a finance record and adjust the budget difference."""
+    db = get_db()
+    with db.cursor() as cursor:
+        sql = """UPDATE finances SET transaction_date=%s, transaction_type=%s, amount=%s, description=%s
+                 WHERE id=%s"""
+        cursor.execute(sql, (new_date, new_type, new_amount, new_description, finance_id))
+
+        # Revert old budget effect
+        if old_type == 'Income':
+            cursor.execute("UPDATE clubs SET budget = budget - %s WHERE id = %s", (old_amount, club_id))
+        else:
+            cursor.execute("UPDATE clubs SET budget = budget + %s WHERE id = %s", (old_amount, club_id))
+
+        # Apply new budget effect
+        if new_type == 'Income':
+            cursor.execute("UPDATE clubs SET budget = budget + %s WHERE id = %s", (new_amount, club_id))
+        else:
+            cursor.execute("UPDATE clubs SET budget = budget - %s WHERE id = %s", (new_amount, club_id))
+            
+    db.commit()
+
+
 def get_finance_summary(club_id):
     """Return total income and total expense for the club."""
     db = get_db()
