@@ -110,12 +110,20 @@
                 </span>
               </td>
               <td class="text-end">
-                <button class="btn btn-icon btn-outline-danger btn-sm"
-                        title="Delete Record"
-                        data-confirm-url="{{ url_for('finances.delete', finance_id=r.id) }}"
-                        data-confirm-msg="Delete this {{ r.transaction_type|lower }} record of ${{ '{:,.2f}'.format(r.amount) }}? The club budget will be adjusted.">
-                  <i class="bi bi-trash"></i>
-                </button>
+                <div class="d-flex gap-1 justify-content-end">
+                  <button class="btn btn-icon btn-outline-warning btn-sm"
+                          title="Edit Record"
+                          data-edit-url="{{ url_for('finances.get_finance', finance_id=r.id) }}"
+                          data-modal-id="#editFinanceModal">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-icon btn-outline-danger btn-sm"
+                          title="Delete Record"
+                          data-confirm-url="{{ url_for('finances.delete', finance_id=r.id) }}"
+                          data-confirm-msg="Delete this {{ r.transaction_type|lower }} record of ${{ '{:,.2f}'.format(r.amount) }}? The club budget will be adjusted.">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
               </td>
             </tr>
             {% endfor %}
@@ -177,6 +185,50 @@
   </div>
 </div>
 
+<!-- ===== EDIT TRANSACTION MODAL ===== -->
+<div class="modal fade" id="editFinanceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-pencil-square me-2 text-warning"></i>Edit Financial Transaction
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editFinanceForm" method="POST" action="" novalidate>
+        <div class="modal-body pt-0">
+          <input type="hidden" name="id" />
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label">Date <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" name="transaction_date" required />
+            </div>
+            <div class="col-6">
+              <label class="form-label">Type <span class="text-danger">*</span></label>
+              <select class="form-select" name="transaction_type" required>
+                <option value="Income">Income</option>
+                <option value="Expense">Expense</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Amount ($) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" name="amount" min="0.01" step="0.01" required />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="description" maxlength="255" required />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning text-white"><i class="bi bi-save me-1"></i>Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -186,5 +238,12 @@
     {{ chart_income  | safe }},
     {{ chart_expenses | safe }}
   );
+
+  document.getElementById('editFinanceModal').addEventListener('show.bs.modal', function () {
+    const idField = this.querySelector('[name="id"]');
+    if (idField && idField.value) {
+      document.getElementById('editFinanceForm').action = '/finances/edit/' + idField.value;
+    }
+  });
 </script>
 {% endblock %}
