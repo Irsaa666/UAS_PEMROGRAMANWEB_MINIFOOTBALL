@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Register a new account and set up your football club in Mini Football Manager." />
+  <title>Register - Mini Football Manager</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+</head>
+<body>
+<div class="auth-wrapper">
+  <div class="auth-card" style="max-width:520px;">
+
+    <div class="auth-logo"><i class="bi bi-person-plus-fill"></i></div>
+    <h1 class="auth-title">Create Your Club</h1>
+    <p class="auth-subtitle">Register and start your football management journey</p>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show mb-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
+
+      <!-- Section: Account Info -->
+      <p class="fw-bold mb-2" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.06em;color:#7a9e8a;">
+        <i class="bi bi-person me-1"></i>Account Information
+      </p>
+      <div class="row g-2 mb-2">
+        <div class="col-md-6">
+          <label for="username" class="form-label">Username</label>
+          <input type="text" class="form-control" id="username" name="username"
+                 placeholder="e.g. rafif99" required minlength="2"
+                 value="{{ form_data.get('username','') }}" />
+        </div>
+        <div class="col-md-6">
+          <label for="reg_email" class="form-label">Email Address</label>
+          <input type="email" class="form-control" id="reg_email" name="email"
+                 placeholder="you@example.com" required
+                 value="{{ form_data.get('email','') }}" />
+        </div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" name="password"
+                 placeholder="Min. 8 characters" required minlength="8" />
+          <div class="strength-bar mt-1" id="strengthBar" style="width:0%;"></div>
+        </div>
+        <div class="col-md-6">
+          <label for="confirm_password" class="form-label">Confirm Password</label>
+          <input type="password" class="form-control" id="confirm_password"
+                 name="confirm_password" placeholder="Repeat password" required />
+        </div>
+      </div>
+
+      <hr style="border-color:#e0ede6;" />
+
+      <!-- Section: Club Info -->
+      <p class="fw-bold mb-2" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.06em;color:#7a9e8a;">
+        <i class="bi bi-shield me-1"></i>Club Information
+      </p>
+      <div class="row g-2 mb-3">
+        <div class="col-md-5">
+          <label for="club_name" class="form-label">Club Name</label>
+          <input type="text" class="form-control" id="club_name" name="club_name"
+                 placeholder="e.g. FC Rafif United" required
+                 value="{{ form_data.get('club_name','') }}" />
+        </div>
+        <div class="col-md-4">
+          <label for="stadium_name" class="form-label">Stadium Name</label>
+          <input type="text" class="form-control" id="stadium_name" name="stadium_name"
+                 placeholder="e.g. Anfield" required
+                 value="{{ form_data.get('stadium_name','') }}" />
+        </div>
+        <div class="col-md-3">
+          <label for="founded_year" class="form-label">Founded</label>
+          <input type="number" class="form-control" id="founded_year" name="founded_year"
+                 placeholder="e.g. 2020" min="1800" max="2026" required
+                 value="{{ form_data.get('founded_year','') }}" />
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" style="font-size:0.95rem;">
+        <i class="bi bi-rocket-takeoff me-2"></i>Create Account & Club
+      </button>
+    </form>
+
+    <div class="auth-footer-link mt-3">
+      Already have an account? <a href="{{ url_for('auth.login') }}">Sign In</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

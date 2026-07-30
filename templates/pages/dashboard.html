@@ -1,0 +1,181 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard - Mini Football Manager{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="d-flex align-items-center mb-4 gap-3">
+  <div style="width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,#1a6b3c,#22854a);display:flex;align-items:center;justify-content:center;">
+    <i class="bi bi-shield-fill" style="color:#fff;font-size:1.5rem;"></i>
+  </div>
+  <div>
+    <h1 class="mb-0" style="font-size:1.45rem;font-weight:800;color:#0f2418;">
+      {{ club.name }}
+    </h1>
+    <span style="font-size:0.85rem;color:#5a7d6a;">
+      <i class="bi bi-geo-alt me-1"></i>{{ club.stadium_name }} &bull;
+      <i class="bi bi-calendar3 me-1"></i>Est. {{ club.founded_year }}
+    </span>
+  </div>
+</div>
+
+<!-- ===== STAT CARDS ===== -->
+<div class="row g-3 mb-4">
+  <!-- Budget -->
+  <div class="col-6 col-lg-3">
+    <div class="stat-card bg-stat-green">
+      <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+      <div class="stat-value">${{ "{:,.0f}".format(club.budget) }}</div>
+      <div class="stat-label">Club Budget</div>
+    </div>
+  </div>
+  <!-- Players -->
+  <div class="col-6 col-lg-3">
+    <div class="stat-card bg-stat-blue">
+      <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+      <div class="stat-value">{{ total_players }}</div>
+      <div class="stat-label">Total Players</div>
+    </div>
+  </div>
+  <!-- Wins -->
+  <div class="col-6 col-lg-3">
+    <div class="stat-card bg-stat-gold">
+      <div class="stat-icon"><i class="bi bi-trophy-fill"></i></div>
+      <div class="stat-value">{{ match_stats.wins or 0 }}</div>
+      <div class="stat-label">Wins</div>
+    </div>
+  </div>
+  <!-- Losses -->
+  <div class="col-6 col-lg-3">
+    <div class="stat-card bg-stat-red">
+      <div class="stat-icon"><i class="bi bi-x-circle-fill"></i></div>
+      <div class="stat-value">{{ match_stats.losses or 0 }}</div>
+      <div class="stat-label">Losses</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECONDARY ROW ===== -->
+<div class="row g-3 mb-4">
+  <!-- Next Match -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-bold text-muted mb-3" style="font-size:0.78rem;letter-spacing:0.05em;text-transform:uppercase;">
+          <i class="bi bi-calendar-event me-1"></i>Next Fixture
+        </h6>
+        {% if next_match %}
+          <div class="text-center py-2">
+            <div style="font-size:0.8rem;color:#7a9e8a;margin-bottom:4px;">Your Club</div>
+            <div class="fw-bold" style="font-size:1.1rem;color:#0f2418;">{{ club.name }}</div>
+            <div class="my-2">
+              <span class="badge rounded-pill" style="background:#f0b429;color:#fff;font-size:0.75rem;padding:5px 14px;">VS</span>
+            </div>
+            <div class="fw-bold" style="font-size:1.1rem;color:#0f2418;">{{ next_match.opponent_name }}</div>
+            <div style="font-size:0.8rem;color:#7a9e8a;margin-top:6px;">
+              <i class="bi bi-clock me-1"></i>{{ next_match.match_date.strftime('%d %b %Y, %H:%M') if next_match.match_date else '' }}
+            </div>
+          </div>
+        {% else %}
+          <div class="empty-state py-4">
+            <i class="bi bi-calendar-x d-block"></i>
+            <p class="mt-2">No upcoming fixtures</p>
+            <a href="{{ url_for('matches.index') }}" class="btn btn-sm btn-primary mt-1">Schedule Match</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Guide (W/D/L) -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-bold text-muted mb-3" style="font-size:0.78rem;letter-spacing:0.05em;text-transform:uppercase;">
+          <i class="bi bi-bar-chart-fill me-1"></i>Current Form
+        </h6>
+        <div class="d-flex justify-content-around text-center pt-2">
+          <div>
+            <div style="font-size:2rem;font-weight:800;color:#1a6b3c;">{{ match_stats.wins or 0 }}</div>
+            <div style="font-size:0.75rem;color:#7a9e8a;font-weight:600;">Wins</div>
+          </div>
+          <div>
+            <div style="font-size:2rem;font-weight:800;color:#1a4e8f;">{{ match_stats.draws or 0 }}</div>
+            <div style="font-size:0.75rem;color:#7a9e8a;font-weight:600;">Draws</div>
+          </div>
+          <div>
+            <div style="font-size:2rem;font-weight:800;color:#991b1b;">{{ match_stats.losses or 0 }}</div>
+            <div style="font-size:0.75rem;color:#7a9e8a;font-weight:600;">Losses</div>
+          </div>
+        </div>
+        <div class="mt-3">
+          {% set total_played = (match_stats.wins or 0) + (match_stats.draws or 0) + (match_stats.losses or 0) %}
+          {% if total_played > 0 %}
+            {% set win_pct = ((match_stats.wins or 0) / total_played * 100)|int %}
+            <div style="font-size:0.75rem;color:#7a9e8a;margin-bottom:4px;">Win rate: {{ win_pct }}%</div>
+            <div class="progress" style="height:8px;border-radius:4px;">
+              <div class="progress-bar" role="progressbar" style="width:{{ win_pct }}%;background:var(--primary);border-radius:4px;"></div>
+            </div>
+          {% else %}
+            <p class="text-muted small mb-0">No matches played yet.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="fw-bold text-muted mb-3" style="font-size:0.78rem;letter-spacing:0.05em;text-transform:uppercase;">
+          <i class="bi bi-lightning-fill me-1"></i>Quick Actions
+        </h6>
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('players.index') }}" class="btn btn-outline-success btn-sm text-start">
+            <i class="bi bi-person-plus me-2"></i>Manage Players
+          </a>
+          <a href="{{ url_for('squad.index') }}" class="btn btn-outline-primary btn-sm text-start">
+            <i class="bi bi-grid-3x3-gap me-2"></i>Set Up Squad
+          </a>
+          <a href="{{ url_for('matches.index') }}" class="btn btn-outline-warning btn-sm text-start">
+            <i class="bi bi-calendar-plus me-2"></i>Schedule Match
+          </a>
+          <a href="{{ url_for('finances.index') }}" class="btn btn-outline-danger btn-sm text-start">
+            <i class="bi bi-cash me-2"></i>Financial Report
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MATCH GOALS CHART ===== -->
+{% if recent_matches %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.05em;color:#5a7d6a;">
+          <i class="bi bi-graph-up me-1"></i>Recent Match Goals (Last 5)
+        </h6>
+        <div style="height:240px;">
+          <canvas id="matchChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  renderMatchChart(
+    {{ chart_labels | tojson }},
+    {{ chart_gf | tojson }},
+    {{ chart_ga | tojson }}
+  );
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+/* ============================================================
+   Mini Football Manager - Auth Page Styles
+   Separate sheet for login & register pages
+   ============================================================ */
+
+.auth-divider {
+  display: flex; align-items: center; gap: 12px; margin: 20px 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: #e0ede6;
+}
+.auth-divider span { font-size: 0.78rem; color: #7a9e8a; white-space: nowrap; }
+
+.auth-footer-link {
+  text-align: center; margin-top: 20px; font-size: 0.85rem; color: #5a7d6a;
+}
+.auth-footer-link a { color: var(--primary); font-weight: 600; }
+.auth-footer-link a:hover { text-decoration: underline; }
+
+.strength-bar { height: 4px; border-radius: 2px; margin-top: 6px; transition: width 0.3s ease, background 0.3s ease; }
