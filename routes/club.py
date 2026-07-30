@@ -7,11 +7,7 @@ from routes.dashboard import login_required
 
 club_bp = Blueprint('club', __name__, url_prefix='/club')
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @club_bp.route('/profile', methods=['GET', 'POST'])
@@ -25,8 +21,8 @@ def profile():
         name         = request.form.get('name', '').strip()
         stadium_name = request.form.get('stadium_name', '').strip()
         founded_year = request.form.get('founded_year', '').strip()
-        logo_file    = request.files.get('logo')
-
+        logo_path = request.form.get('logo_path', club.get('logo_path'))
+        
         # Validation
         errors = []
         if not name or len(name) > 100:
@@ -41,19 +37,10 @@ def profile():
                 flash(err, 'danger')
             return render_template('pages/club_profile.html', club=club)
 
-        logo_path = club.get('logo_path')
-
-        # Handle logo upload
-        if logo_file and logo_file.filename != '':
-            if not allowed_file(logo_file.filename):
-                flash('Invalid file type. Allowed: png, jpg, jpeg, gif, webp', 'danger')
-                return render_template('pages/club_profile.html', club=club)
-
-            filename  = secure_filename(f"club_{club['id']}_{logo_file.filename}")
-            save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-            os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
-            logo_file.save(save_path)
-            logo_path = filename
+        allowed_logos = ['barcelona.png', 'arsenal.png', 'real_madrid.png', 
+                         'generic_blue.png', 'generic_red.png', 'eagle.png', 'phoenix.png']
+        if logo_path not in allowed_logos:
+            logo_path = 'generic_blue.png'
 
         update_club(club['id'], name, stadium_name, int(founded_year), logo_path)
         flash('Club profile updated successfully!', 'success')
