@@ -49,7 +49,8 @@ def profile():
                 flash('Invalid file type. Allowed: png, jpg, jpeg, gif, webp', 'danger')
                 return render_template('pages/club_profile.html', club=club)
 
-            filename  = secure_filename(f"club_{club['id']}_{logo_file.filename}")
+            import time
+            filename  = secure_filename(f"club_{club['id']}_{int(time.time())}_{logo_file.filename}")
             save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
             logo_file.save(save_path)

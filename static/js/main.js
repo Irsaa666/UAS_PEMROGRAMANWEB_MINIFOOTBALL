@@ -6,34 +6,96 @@
 
 document.addEventListener('DOMContentLoaded', function () {
 
-  /* ----------------------------------------------------------
-     SIDEBAR TOGGLE (Mobile)
-  ---------------------------------------------------------- */
-  const sidebar        = document.getElementById('sidebar');
-  const sidebarOverlay = document.getElementById('sidebarOverlay');
-  const toggleBtn      = document.getElementById('sidebarToggle');
+  // Event Delegation for click events
+  document.body.addEventListener('click', function (e) {
+    
+    // Sidebar Toggle
+    const toggleBtn = e.target.closest('#sidebarToggle');
+    if (toggleBtn) {
+      e.preventDefault();
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (sidebar?.classList.contains('show')) {
+        sidebar.classList.remove('show');
+        overlay?.classList.remove('show');
+        document.body.style.overflow = '';
+      } else {
+        sidebar?.classList.add('show');
+        overlay?.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+    }
 
-  function openSidebar() {
-    sidebar?.classList.add('show');
-    sidebarOverlay?.classList.add('show');
-    document.body.style.overflow = 'hidden';
-  }
+    // Sidebar Overlay close
+    if (e.target.closest('#sidebarOverlay')) {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar?.classList.remove('show');
+      overlay?.classList.remove('show');
+      document.body.style.overflow = '';
+    }
 
-  function closeSidebar() {
-    sidebar?.classList.remove('show');
-    sidebarOverlay?.classList.remove('show');
-    document.body.style.overflow = '';
-  }
+    // Generic Delete Confirmation Modal
+    const confirmBtn = e.target.closest('[data-confirm-url]');
+    if (confirmBtn) {
+      e.preventDefault();
+      const url = confirmBtn.dataset.confirmUrl;
+      const msg = confirmBtn.dataset.confirmMsg || 'Are you sure you want to proceed?';
+      const confirmForm = document.getElementById('confirmForm');
+      const confirmMsgEl = document.getElementById('confirmMsg');
+      const confirmModal = document.getElementById('confirmModal');
 
-  toggleBtn?.addEventListener('click', function () {
-    sidebar?.classList.contains('show') ? closeSidebar() : openSidebar();
+      if (confirmForm) confirmForm.action = url;
+      if (confirmMsgEl) confirmMsgEl.textContent = msg;
+      if (confirmModal) bootstrap.Modal.getOrCreateInstance(confirmModal).show();
+    }
+
+    // Edit Modal AJAX Population
+    const editBtn = e.target.closest('[data-edit-url]');
+    if (editBtn) {
+      e.preventDefault();
+      const url = editBtn.dataset.editUrl;
+      const modalId = editBtn.dataset.modalId;
+      const modal = document.querySelector(modalId);
+
+      if (modal) {
+        fetch(url)
+          .then(resp => {
+            if (!resp.ok) throw new Error('Not found');
+            return resp.json();
+          })
+          .then(data => {
+            Object.entries(data).forEach(([key, value]) => {
+              const field = modal.querySelector(`[name="${key}"]`);
+              if (field) field.value = value;
+            });
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+          })
+          .catch(err => console.error('Edit modal fetch error:', err));
+      }
+    }
+
+    // Result Modal Population
+    const resultBtn = e.target.closest('[data-result-match-id]');
+    if (resultBtn) {
+      e.preventDefault();
+      const url = resultBtn.dataset.resultUrl;
+      const modal = document.getElementById('resultModal');
+      const form = document.getElementById('resultForm');
+      if (form) form.action = url;
+      if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
   });
-
-  sidebarOverlay?.addEventListener('click', closeSidebar);
 
   // Close sidebar on window resize if wide enough
   window.addEventListener('resize', function () {
-    if (window.innerWidth >= 992) closeSidebar();
+    if (window.innerWidth >= 992) {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar?.classList.remove('show');
+      overlay?.classList.remove('show');
+      document.body.style.overflow = '';
+    }
   });
 
   /* ----------------------------------------------------------
@@ -44,70 +106,6 @@ document.addEventListener('DOMContentLoaded', function () {
       const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
       bsAlert?.close();
     }, 4500);
-  });
-
-  /* ----------------------------------------------------------
-     GENERIC DELETE CONFIRMATION MODAL
-     Usage: add data-confirm-url="/path" data-confirm-msg="Are you sure?"
-     to a button, and include #confirmModal in layout.html
-  ---------------------------------------------------------- */
-  const confirmModal  = document.getElementById('confirmModal');
-  const confirmForm   = document.getElementById('confirmForm');
-  const confirmMsgEl  = document.getElementById('confirmMsg');
-
-  document.querySelectorAll('[data-confirm-url]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      const url = btn.dataset.confirmUrl;
-      const msg = btn.dataset.confirmMsg || 'Are you sure you want to proceed?';
-      if (confirmForm) confirmForm.action = url;
-      if (confirmMsgEl) confirmMsgEl.textContent = msg;
-      if (confirmModal) new bootstrap.Modal(confirmModal).show();
-    });
-  });
-
-  /* ----------------------------------------------------------
-     EDIT MODAL POPULATION via AJAX (fetch JSON from /*/get/<id>)
-     Usage: add data-edit-url="/players/get/5" data-modal-id="#editPlayerModal"
-     to a button. The returned JSON keys must match form field names.
-  ---------------------------------------------------------- */
-  document.querySelectorAll('[data-edit-url]').forEach(function (btn) {
-    btn.addEventListener('click', async function () {
-      const url     = btn.dataset.editUrl;
-      const modalId = btn.dataset.modalId;
-      const modal   = document.querySelector(modalId);
-      if (!modal) return;
-
-      try {
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error('Not found');
-        const data = await resp.json();
-
-        // Populate form fields whose name attribute matches JSON keys
-        Object.entries(data).forEach(([key, value]) => {
-          const field = modal.querySelector(`[name="${key}"]`);
-          if (field) field.value = value;
-        });
-
-        new bootstrap.Modal(modal).show();
-      } catch (err) {
-        console.error('Edit modal fetch error:', err);
-      }
-    });
-  });
-
-  /* ----------------------------------------------------------
-     RESULT MODAL POPULATION
-     Usage: add data-result-match-id="5" data-result-url="/matches/result/5"
-  ---------------------------------------------------------- */
-  document.querySelectorAll('[data-result-match-id]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      const matchId  = btn.dataset.resultMatchId;
-      const url      = btn.dataset.resultUrl;
-      const modal    = document.getElementById('resultModal');
-      const form     = document.getElementById('resultForm');
-      if (form) form.action = url;
-      if (modal) new bootstrap.Modal(modal).show();
-    });
   });
 
   /* ----------------------------------------------------------

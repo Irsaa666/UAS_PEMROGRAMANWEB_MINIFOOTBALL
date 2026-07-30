@@ -1,8 +1,8 @@
 from flask import (Blueprint, render_template, request, redirect,
-                   url_for, session, flash)
+                   url_for, session, flash, jsonify)
 from models.club_model import get_club_by_user
 from models.finance_model import (get_finances, get_finance_by_id,
-                                   create_finance, delete_finance,
+                                   create_finance, delete_finance, update_finance,
                                    get_finance_summary, get_monthly_summary)
 from routes.dashboard import login_required
 import json
@@ -94,4 +94,67 @@ def delete(finance_id):
 
     delete_finance(finance_id, club['id'], record['transaction_type'], float(record['amount']))
     flash('Financial record deleted and budget adjusted.', 'info')
+    return redirect(url_for('finances.index'))
+
+
+@finances_bp.route('/get/<int:finance_id>', methods=['GET'])
+@login_required
+def get_finance(finance_id):
+    """Return finance JSON data for edit modal population."""
+    user_id = session['user_id']
+    club    = get_club_by_user(user_id)
+    record  = get_finance_by_id(finance_id)
+
+    if not record or record['club_id'] != club['id']:
+        return jsonify({'error': 'Not found'}), 404
+
+    return jsonify({
+        'id':               record['id'],
+        'transaction_date': record['transaction_date'].strftime('%Y-%m-%d'),
+        'transaction_type': record['transaction_type'],
+        'amount':           float(record['amount']),
+        'description':      record['description']
+    })
+
+
+@finances_bp.route('/edit/<int:finance_id>', methods=['POST'])
+@login_required
+def edit(finance_id):
+    """Update an existing financial record."""
+    user_id = session['user_id']
+    club    = get_club_by_user(user_id)
+    record  = get_finance_by_id(finance_id)
+
+    if not record or record['club_id'] != club['id']:
+        flash('Record not found.', 'danger')
+        return redirect(url_for('finances.index'))
+
+    transaction_date = request.form.get('transaction_date', '').strip()
+    transaction_type = request.form.get('transaction_type', '').strip()
+    amount           = request.form.get('amount', '').strip()
+    description      = request.form.get('description', '').strip()
+
+    errors = []
+    if not transaction_date:
+        errors.append('Transaction date is required.')
+    if transaction_type not in ['Income', 'Expense']:
+        errors.append('Transaction type must be Income or Expense.')
+    try:
+        amt = float(amount)
+        if amt <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        errors.append('Amount must be a positive number.')
+        amt = 0
+    if not description or len(description) > 255:
+        errors.append('Description is required and must be under 255 characters.')
+
+    if errors:
+        for err in errors:
+            flash(err, 'danger')
+        return redirect(url_for('finances.index'))
+
+    update_finance(finance_id, club['id'], transaction_date, transaction_type, amt, description,
+                   record['transaction_type'], float(record['amount']))
+    flash('Financial record updated!', 'success')
     return redirect(url_for('finances.index'))
