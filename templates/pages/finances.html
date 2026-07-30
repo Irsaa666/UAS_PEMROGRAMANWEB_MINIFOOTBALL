@@ -1,0 +1,190 @@
+{% extends "layout.html" %}
+{% block title %}Financial Report - Mini Football Manager{% endblock %}
+{% block page_title %}Financial Report{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Financial Report</h1>
+    <p class="page-subtitle">Track your club's income and expenses</p>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFinanceModal">
+    <i class="bi bi-plus-circle me-2"></i>Add Transaction
+  </button>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-4">
+    <div class="stat-card bg-stat-green">
+      <div class="stat-icon"><i class="bi bi-arrow-down-circle-fill"></i></div>
+      <div class="stat-value">${{ "{:,.0f}".format(summary.Income) }}</div>
+      <div class="stat-label">Total Income</div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="stat-card bg-stat-red">
+      <div class="stat-icon"><i class="bi bi-arrow-up-circle-fill"></i></div>
+      <div class="stat-value">${{ "{:,.0f}".format(summary.Expense) }}</div>
+      <div class="stat-label">Total Expenses</div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    {% set net = summary.Income - summary.Expense %}
+    <div class="stat-card {% if net >= 0 %}bg-stat-blue{% else %}bg-stat-red{% endif %}">
+      <div class="stat-icon"><i class="bi bi-wallet-fill"></i></div>
+      <div class="stat-value">${{ "{:,.0f}".format(net|abs) }}</div>
+      <div class="stat-label">Net Balance {{ '(Surplus)' if net >= 0 else '(Deficit)' }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly Chart -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h6 class="fw-bold mb-3" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.05em;color:#5a7d6a;">
+      <i class="bi bi-graph-up me-1"></i>Monthly Income vs Expenses (Last 6 Months)
+    </h6>
+    <div style="height:240px;">
+      <canvas id="financeChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Search & Filter -->
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <form method="GET" action="{{ url_for('finances.index') }}" class="d-flex gap-2 flex-wrap">
+      <div class="topbar-search flex-grow-1">
+        <i class="bi bi-search search-icon"></i>
+        <input type="text" class="form-control search-input-live" name="search"
+               value="{{ search }}" placeholder="Search by description..." />
+      </div>
+      <select name="type" class="form-select filter-select-auto" style="max-width:160px;">
+        <option value="All"     {% if type_filter == 'All' %}selected{% endif %}>All Types</option>
+        <option value="Income"  {% if type_filter == 'Income' %}selected{% endif %}>Income Only</option>
+        <option value="Expense" {% if type_filter == 'Expense' %}selected{% endif %}>Expenses Only</option>
+      </select>
+      <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-funnel"></i></button>
+      {% if search or type_filter != 'All' %}
+        <a href="{{ url_for('finances.index') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i></a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- Ledger Table -->
+<div class="card table-card">
+  <div class="card-body">
+    {% if records %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th class="text-end">Amount</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+            <tr>
+              <td class="text-muted fw-bold">{{ loop.index }}</td>
+              <td>
+                <div class="fw-semibold">{{ r.transaction_date.strftime('%d %b %Y') }}</div>
+              </td>
+              <td>
+                {% if r.transaction_type == 'Income' %}
+                  <span class="badge badge-income"><i class="bi bi-arrow-down me-1"></i>Income</span>
+                {% else %}
+                  <span class="badge badge-expense"><i class="bi bi-arrow-up me-1"></i>Expense</span>
+                {% endif %}
+              </td>
+              <td style="max-width:300px;white-space:normal;">{{ r.description }}</td>
+              <td class="text-end">
+                <span class="{{ 'finance-amount-income' if r.transaction_type == 'Income' else 'finance-amount-expense' }}">
+                  {{ '+' if r.transaction_type == 'Income' else '-' }}${{ "{:,.2f}".format(r.amount) }}
+                </span>
+              </td>
+              <td class="text-end">
+                <button class="btn btn-icon btn-outline-danger btn-sm"
+                        title="Delete Record"
+                        data-confirm-url="{{ url_for('finances.delete', finance_id=r.id) }}"
+                        data-confirm-msg="Delete this {{ r.transaction_type|lower }} record of ${{ '{:,.2f}'.format(r.amount) }}? The club budget will be adjusted.">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="bi bi-receipt-cutoff d-block"></i>
+        <p>No financial records found. Add your first transaction!</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+
+<!-- ===== ADD TRANSACTION MODAL ===== -->
+<div class="modal fade" id="addFinanceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-plus-circle me-2 text-success"></i>Add Financial Transaction
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('finances.add') }}" novalidate>
+        <div class="modal-body pt-0">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label">Date <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" name="transaction_date" required />
+            </div>
+            <div class="col-6">
+              <label class="form-label">Type <span class="text-danger">*</span></label>
+              <select class="form-select" name="transaction_type" required>
+                <option value="Income">Income</option>
+                <option value="Expense">Expense</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Amount ($) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" name="amount" min="0.01" step="0.01"
+                     placeholder="e.g. 50000" required />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="description" maxlength="255"
+                     placeholder="e.g. Match ticket sales, Player salary..." required />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Add Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  renderFinanceChart(
+    {{ chart_labels | safe }},
+    {{ chart_income  | safe }},
+    {{ chart_expenses | safe }}
+  );
+</script>
+{% endblock %}

@@ -1,0 +1,241 @@
+{% extends "layout.html" %}
+{% block title %}Match Schedule - Mini Football Manager{% endblock %}
+{% block page_title %}Match Schedule & Results{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Matches</h1>
+    <p class="page-subtitle">Schedule fixtures and log match results</p>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMatchModal">
+    <i class="bi bi-calendar-plus me-2"></i>Schedule Match
+  </button>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <form method="GET" action="{{ url_for('matches.index') }}" class="d-flex gap-2 flex-wrap">
+      <select name="status" class="form-select filter-select-auto" style="max-width:180px;">
+        <option value="All"       {% if status_filter == 'All' %}selected{% endif %}>All Matches</option>
+        <option value="Scheduled" {% if status_filter == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+        <option value="Played"    {% if status_filter == 'Played' %}selected{% endif %}>Played</option>
+      </select>
+      <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-funnel"></i> Filter</button>
+      {% if status_filter != 'All' %}
+        <a href="{{ url_for('matches.index') }}" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i></a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- Matches Table -->
+<div class="card table-card">
+  <div class="card-body">
+    {% if fixtures %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date & Time</th>
+              <th>Opponent</th>
+              <th>Status</th>
+              <th>Result</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in fixtures %}
+            <tr>
+              <td class="text-muted fw-bold">{{ loop.index }}</td>
+              <td>
+                <div class="fw-semibold">{{ m.match_date.strftime('%d %b %Y') }}</div>
+                <div style="font-size:0.75rem;color:#7a9e8a;">{{ m.match_date.strftime('%H:%M') }}</div>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div style="width:32px;height:32px;border-radius:8px;background:#f5f8f6;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a4e8f;font-size:0.8rem;">
+                    {{ m.opponent_name[0]|upper }}
+                  </div>
+                  <span class="fw-semibold">{{ m.opponent_name }}</span>
+                </div>
+              </td>
+              <td>
+                {% if m.status == 'Scheduled' %}
+                  <span class="badge badge-scheduled"><i class="bi bi-clock me-1"></i>Scheduled</span>
+                {% else %}
+                  <span class="badge badge-played"><i class="bi bi-check-circle me-1"></i>Played</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if m.status == 'Played' %}
+                  {% if m.goals_for > m.goals_against %}
+                    <span class="result-win">W {{ m.goals_for }} – {{ m.goals_against }}</span>
+                  {% elif m.goals_for == m.goals_against %}
+                    <span class="result-draw">D {{ m.goals_for }} – {{ m.goals_against }}</span>
+                  {% else %}
+                    <span class="result-loss">L {{ m.goals_for }} – {{ m.goals_against }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="d-flex gap-1 justify-content-end">
+                  {% if m.status == 'Scheduled' %}
+                    <!-- Edit fixture -->
+                    <button class="btn btn-icon btn-outline-warning btn-sm"
+                            title="Edit Fixture"
+                            data-edit-url="{{ url_for('matches.get_match', match_id=m.id) }}"
+                            data-modal-id="#editMatchModal">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <!-- Log result -->
+                    <button class="btn btn-icon btn-outline-success btn-sm"
+                            title="Log Result"
+                            data-result-match-id="{{ m.id }}"
+                            data-result-url="{{ url_for('matches.result', match_id=m.id) }}">
+                      <i class="bi bi-check2-square"></i>
+                    </button>
+                  {% endif %}
+                  <!-- Delete -->
+                  <button class="btn btn-icon btn-outline-danger btn-sm"
+                          title="Delete"
+                          data-confirm-url="{{ url_for('matches.delete', match_id=m.id) }}"
+                          data-confirm-msg="Delete match vs {{ m.opponent_name }}? This action cannot be undone.">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="bi bi-calendar-x d-block"></i>
+        <p>No matches found. Schedule your first fixture!</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+
+<!-- ===== ADD MATCH MODAL ===== -->
+<div class="modal fade" id="addMatchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-calendar-plus me-2 text-success"></i>Schedule New Match
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('matches.add') }}" novalidate>
+        <div class="modal-body pt-0">
+          <div class="mb-3">
+            <label class="form-label">Opponent Club Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="opponent_name"
+                   placeholder="e.g. Manchester United" required minlength="2" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Match Date & Time <span class="text-danger">*</span></label>
+            <input type="datetime-local" class="form-control" name="match_date" required />
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== EDIT MATCH MODAL ===== -->
+<div class="modal fade" id="editMatchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-pencil-square me-2 text-warning"></i>Edit Match Fixture
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editMatchForm" method="POST" action="" novalidate>
+        <div class="modal-body pt-0">
+          <input type="hidden" name="id" />
+          <div class="mb-3">
+            <label class="form-label">Opponent Club Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="opponent_name" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Match Date & Time <span class="text-danger">*</span></label>
+            <input type="datetime-local" class="form-control" name="match_date" required />
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning text-white"><i class="bi bi-save me-1"></i>Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== LOG RESULT MODAL ===== -->
+<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:380px;">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-trophy me-2 text-success"></i>Log Match Result
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="resultForm" method="POST" action="" novalidate>
+        <div class="modal-body pt-0">
+          <div class="row g-3 text-center">
+            <div class="col-5">
+              <label class="form-label fw-bold" style="color:#1a6b3c;">Your Goals</label>
+              <input type="number" class="form-control text-center" name="goals_for"
+                     min="0" max="99" value="0" required
+                     style="font-size:1.5rem;font-weight:800;color:#1a6b3c;" />
+            </div>
+            <div class="col-2 d-flex align-items-end justify-content-center pb-2">
+              <span class="fw-bold" style="font-size:1.2rem;color:#5a7d6a;">VS</span>
+            </div>
+            <div class="col-5">
+              <label class="form-label fw-bold" style="color:#991b1b;">Opp. Goals</label>
+              <input type="number" class="form-control text-center" name="goals_against"
+                     min="0" max="99" value="0" required
+                     style="font-size:1.5rem;font-weight:800;color:#991b1b;" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Save Result</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('editMatchModal').addEventListener('show.bs.modal', function () {
+    const idField = this.querySelector('[name="id"]');
+    if (idField && idField.value) {
+      document.getElementById('editMatchForm').action = '/matches/edit/' + idField.value;
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,205 @@
+{% extends "layout.html" %}
+{% block title %}Squad Management - Mini Football Manager{% endblock %}
+{% block page_title %}Squad Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Squad Management</h1>
+    <p class="page-subtitle">Organize your players into tactical roles</p>
+  </div>
+  {% if unassigned %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignModal">
+      <i class="bi bi-plus-circle me-2"></i>Assign Player
+    </button>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+  <!-- Squad Groups -->
+  <div class="col-12 col-lg-8">
+
+    {% set role_config = {
+      'Starting XI':  ('squad-header-xi',      'bi-star-fill',       '11 players recommended'),
+      'Substitute':   ('squad-header-sub',     'bi-arrow-left-right', 'Bench players'),
+      'Reserve':      ('squad-header-res',     'bi-person',           'Reserve squad'),
+      'Injured':      ('squad-header-injured', 'bi-bandaid',          'Out of action')
+    } %}
+
+    {% for role in roles %}
+      {% set members = grouped_squad[role] %}
+      {% set cfg = role_config[role] %}
+      <div class="squad-section">
+        <div class="squad-section-header {{ cfg[0] }}">
+          <i class="bi {{ cfg[1] }}"></i>
+          <span class="fw-bold">{{ role }}</span>
+          <span class="ms-auto badge bg-white text-dark">{{ members|length }}</span>
+          <span class="ms-2" style="font-weight:400;font-size:0.75rem;opacity:0.7;">{{ cfg[2] }}</span>
+        </div>
+
+        {% if members %}
+          <div class="card table-card">
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Player</th>
+                      <th>Pos</th>
+                      <th>OVR</th>
+                      <th>Age</th>
+                      <th>Change Role</th>
+                      <th class="text-end">Remove</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for m in members %}
+                    <tr>
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <div style="width:32px;height:32px;border-radius:8px;background:#f0f4f2;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a6b3c;font-size:0.8rem;">
+                            {{ m.name[0]|upper }}
+                          </div>
+                          <span class="fw-semibold" style="font-size:0.875rem;">{{ m.name }}</span>
+                        </div>
+                      </td>
+                      <td><span class="position-pill pos-{{ m.position|lower }}">{{ m.position }}</span></td>
+                      <td>
+                        <span class="rating-badge
+                          {% if m.overall_rating >= 85 %}rating-elite
+                          {% elif m.overall_rating >= 70 %}rating-good
+                          {% elif m.overall_rating >= 55 %}rating-medium
+                          {% else %}rating-low{% endif %}">
+                          {{ m.overall_rating }}
+                        </span>
+                      </td>
+                      <td>{{ m.age }}</td>
+                      <td>
+                        <form method="POST" action="{{ url_for('squad.update_role') }}" class="d-flex gap-1">
+                          <input type="hidden" name="squad_id" value="{{ m.squad_id }}" />
+                          <select name="role" class="form-select form-select-sm" style="font-size:0.78rem;max-width:130px;">
+                            {% for r in roles %}
+                              <option value="{{ r }}" {% if r == m.role %}selected{% endif %}>{{ r }}</option>
+                            {% endfor %}
+                          </select>
+                          <button class="btn btn-sm btn-outline-primary" type="submit" title="Update role">
+                            <i class="bi bi-check"></i>
+                          </button>
+                        </form>
+                      </td>
+                      <td class="text-end">
+                        <button class="btn btn-icon btn-outline-danger btn-sm"
+                                data-confirm-url="{{ url_for('squad.remove', squad_id=m.squad_id) }}"
+                                data-confirm-msg="Remove {{ m.name }} from the squad?">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div style="background:#f5f8f6;border-radius:10px;padding:18px 16px;text-align:center;color:#7a9e8a;font-size:0.85rem;">
+            <i class="bi bi-inbox me-1"></i> No players in this role.
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- Unassigned Players Sidebar -->
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.05em;color:#5a7d6a;">
+          <i class="bi bi-person-dash me-1"></i>Unassigned Players ({{ unassigned|length }})
+        </h6>
+        {% if unassigned %}
+          <div style="max-height:500px;overflow-y:auto;">
+            {% for p in unassigned %}
+              <div class="d-flex align-items-center justify-content-between py-2 border-bottom" style="border-color:#eaf2ec!important;">
+                <div class="d-flex align-items-center gap-2">
+                  <div style="width:30px;height:30px;border-radius:8px;background:#f0f4f2;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a6b3c;font-size:0.75rem;">
+                    {{ p.name[0]|upper }}
+                  </div>
+                  <div>
+                    <div style="font-size:0.85rem;font-weight:600;">{{ p.name }}</div>
+                    <div style="font-size:0.72rem;color:#7a9e8a;">
+                      <span class="position-pill pos-{{ p.position|lower }}">{{ p.position }}</span>
+                      OVR {{ p.overall_rating }}
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-success"
+                        onclick="quickAssign({{ p.id }}, '{{ p.name }}')">
+                  <i class="bi bi-plus"></i>
+                </button>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state py-3">
+            <i class="bi bi-check-circle d-block"></i>
+            <p class="mt-2">All players are assigned!</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ASSIGN MODAL ===== -->
+<div class="modal fade" id="assignModal" tabindex="-1" aria-labelledby="assignLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold" id="assignLabel">
+          <i class="bi bi-plus-circle me-2 text-success"></i>Assign Player to Squad
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('squad.assign') }}" novalidate>
+        <div class="modal-body pt-0">
+          <div class="mb-3">
+            <label class="form-label">Player <span class="text-danger">*</span></label>
+            <select class="form-select" name="player_id" id="assignPlayerSelect" required>
+              <option value="">-- Select a player --</option>
+              {% for p in unassigned %}
+                <option value="{{ p.id }}">{{ p.name }} ({{ p.position }}, OVR {{ p.overall_rating }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Role <span class="text-danger">*</span></label>
+            <select class="form-select" name="role" id="assignRoleSelect" required>
+              {% for r in roles %}
+                <option value="{{ r }}">{{ r }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Assign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function quickAssign(playerId, playerName) {
+    const modal = document.getElementById('assignModal');
+    const selectPlayer = document.getElementById('assignPlayerSelect');
+    if (selectPlayer) selectPlayer.value = playerId;
+    new bootstrap.Modal(modal).show();
+  }
+</script>
+{% endblock %}
